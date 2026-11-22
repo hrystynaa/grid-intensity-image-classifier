@@ -1,0 +1,42 @@
+# Whitelist: only application code is tracked
+/*
+!/.gitignore
+!/app/
+
+# Dependencies and build output
+app/node_modules/
+app/dist/
+app/results/
+app/test-results/
+app/playwright-report/
+app/.cache/
+
+# Documents
+*.md
+*.doc
+*.docx
+*.odt
+*.pdf
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+
+# Datasets, generated media and archives
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.webp
+*.gif
+*.tif
+*.tiff
+*.zip
+*.7z
+*.rar
+
+# Local data and secrets
+*.log
+*.csv
+.env
+.env.*
