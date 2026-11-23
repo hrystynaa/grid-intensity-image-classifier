@@ -1,5 +1,6 @@
 import { CLASSES, formatLabel } from '../core/classes.js';
 import { formatFromName } from '../core/dataset.js';
+import { encodeFeatures } from '../core/encoding.js';
 import {
   formatAspectRatio,
   formatBytes,
@@ -7,14 +8,18 @@ import {
   formatDuration,
   formatFiles,
   formatNumber,
+  formatPercent,
 } from '../core/format.js';
 import { cellBoundaries } from '../core/gridLayout.js';
 import { readFileHeader } from '../core/imageHeader.js';
+import { indexOfMax, toShares } from '../core/metrics.js';
+import { recognitionToCsv } from '../core/resultsExport.js';
 import { GRID_SIZES } from '../core/validation.js';
 import { byId, element, saveBlob } from './dom.js';
 import { exportCanvas } from './imageExport.js';
 
 const SMALL_IMAGE_SIDE = 256;
+const MIN_SIDE_FOR_LABEL = 160;
 const CHANNEL_LABELS = { 1: '1 (відтінки сірого)', 2: '2 (сірий і прозорість)', 3: '3 (RGB)', 4: '4 (RGBA або CMYK)' };
 
 function drawGrid(context, width, height, cells) {
@@ -29,7 +34,21 @@ function drawGrid(context, width, height, cells) {
   for (const y of ys) context.fillRect(0, y, width, line);
 }
 
-export function initRecognizePanel({ log, progress, toast, gridModel }) {
+function drawPredictionLabel(context, width, height, text) {
+  if (Math.min(width, height) < MIN_SIDE_FOR_LABEL) return;
+  const size = Math.max(14, Math.round(Math.max(width, height) / 40));
+  const padding = Math.round(size * 0.5);
+  const boxHeight = size + padding * 2;
+  context.font = `600 ${size}px "Segoe UI", system-ui, sans-serif`;
+  context.textBaseline = 'middle';
+  const boxWidth = Math.min(width, context.measureText(text).width + padding * 2);
+  context.fillStyle = 'rgb(0 0 0 / 72%)';
+  context.fillRect(0, height - boxHeight, boxWidth, boxHeight);
+  context.fillStyle = '#ffffff';
+  context.fillText(text, padding, height - boxHeight / 2, boxWidth - padding * 2);
+}
+
+export function initRecognizePanel({ log, progress, toast, gridModel, modelClient, modelState, extractor }) {
   const input = byId('imageInput');
   const dropzone = byId('dropzone');
   const placeholder = byId('dropPlaceholder');
@@ -43,10 +62,15 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
   const saveButtons = [...document.querySelectorAll('[data-save]')];
   const dialog = byId('infoDialog');
   const infoList = byId('infoList');
+  const resultSummary = byId('recognitionSummary');
+  const resultButtons = [byId('saveResultCsv'), byId('saveResultJson')];
 
   let image = null;
   let loadToken = 0;
   let saving = false;
+  let prediction = null;
+  let recognizeToken = 0;
+  let recognizeQueue = Promise.resolve();
 
   viewGrid.append(...GRID_SIZES.map((size) => element('option', { text: `${size}×${size}`, attrs: { value: size } })));
   viewGrid.value = String(gridModel.get());
@@ -58,7 +82,7 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
           element('span', { text: item.label }),
           element('span', { className: 'class-result-value', text: '—' }),
         ]),
-        element('div', { className: 'meter' }),
+        element('div', { className: 'meter' }, [element('div', { className: 'meter-fill' })]),
       ]),
     ),
   );
@@ -75,6 +99,9 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     saveButtons.forEach((button) => {
       button.disabled = !loaded || saving;
     });
+    resultButtons.forEach((button) => {
+      button.disabled = !prediction;
+    });
     saveHint.textContent = loaded
       ? 'Збережеться те, що показано, разом із сіткою.'
       : 'Спершу завантажте зображення. Збережеться те, що показано, разом із сіткою.';
@@ -88,10 +115,108 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     const context = canvas.getContext('2d', { willReadFrequently: true });
     context.drawImage(image.bitmap, 0, 0);
     if (showGrid.checked) drawGrid(context, image.width, image.height, gridModel.get());
+    if (prediction) {
+      const best = prediction.bestIndex;
+      drawPredictionLabel(context, image.width, image.height, `${CLASSES[best].label} · ${formatPercent(prediction.shares[best])}`);
+    }
+  }
+
+  function renderPrediction(message) {
+    [...byId('classResults').children].forEach((row, index) => {
+      const share = prediction?.shares[index];
+      row.dataset.best = String(prediction?.bestIndex === index);
+      row.querySelector('.class-result-value').textContent = prediction ? formatPercent(share) : '—';
+      row.querySelector('.meter-fill').style.transform = `scaleX(${share ?? 0})`;
+    });
+    if (message) resultSummary.textContent = message;
+    else if (prediction) {
+      const { bestIndex, gridSize, recognitionMs } = prediction;
+      resultSummary.textContent = `Найімовірніше: ${CLASSES[bestIndex].label}. Сітка ${gridSize}×${gridSize}, час ${formatDuration(recognitionMs)}. Відповіді мережі нормовано так, щоб їхня сума дорівнювала 100%.`;
+    } else {
+      resultSummary.textContent = modelState.get()
+        ? 'Модель готова. Завантажте зображення для розпізнавання.'
+        : 'Імовірності з’являться після навчання моделі.';
+    }
+    setControls();
+  }
+
+  function recognize() {
+    const token = ++recognizeToken;
+    const model = modelState.get();
+    const current = image;
+    prediction = null;
+    renderPrediction();
+    draw();
+    if (!current || !model) return;
+    renderPrediction('Розпізнавання…');
+
+    recognizeQueue = recognizeQueue.then(async () => {
+      if (token !== recognizeToken) return;
+      const task = progress.start({ title: `Розпізнавання «${current.file.name}»`, total: 2, unit: 'кроків', rateUnit: null, secondary: true });
+      try {
+        const started = performance.now();
+        const [features] = await extractor.extract([{ file: current.file }], model.gridSize);
+        if (token !== recognizeToken) {
+          task.cancelled('Розпізнавання скасовано');
+          return;
+        }
+        if (!features.ok) {
+          throw new Error(features.reason === 'tooSmall' ? `зображення менше за сітку ${model.gridSize}×${model.gridSize}` : 'не вдалося обробити файл');
+        }
+        task.update(1);
+        const outputs = await modelClient.predict(encodeFeatures(features.means, model.encoding));
+        if (token !== recognizeToken) {
+          task.cancelled('Розпізнавання скасовано');
+          return;
+        }
+        const shares = toShares(outputs);
+        const bestIndex = indexOfMax(shares);
+        prediction = { shares, bestIndex, gridSize: model.gridSize, encoding: model.encoding, recognitionMs: performance.now() - started };
+        renderPrediction();
+        draw();
+        const text = `Розпізнано ${current.file.name}: ${CLASSES[bestIndex].label}, ${formatPercent(shares[bestIndex])}, ${formatDuration(prediction.recognitionMs)}`;
+        task.finish(text);
+        log.add('success', text);
+      } catch (error) {
+        if (token !== recognizeToken) return;
+        const text = `Не вдалося розпізнати «${current.file.name}»: ${error.message}.`;
+        task.fail('Не вдалося розпізнати зображення');
+        renderPrediction(text);
+        log.add('error', text);
+        toast('error', text);
+      }
+    });
+  }
+
+  function saveResult(kind) {
+    if (!prediction || !image) return;
+    const { shares, bestIndex, gridSize, encoding, recognitionMs } = prediction;
+    const result = {
+      file: image.file.name,
+      width: image.width,
+      height: image.height,
+      gridSize,
+      encoding,
+      predicted: CLASSES[bestIndex].id,
+      predictedLabel: CLASSES[bestIndex].label,
+      shares: Object.fromEntries(CLASSES.map((item, index) => [item.id, shares[index]])),
+      recognitionMs,
+    };
+    const baseName = image.file.name.replace(/\.[^.]+$/, '');
+    const fileName = `${baseName}_результат.${kind}`;
+    const blob =
+      kind === 'csv'
+        ? new Blob([recognitionToCsv(result)], { type: 'text/csv;charset=utf-8' })
+        : new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+    saveBlob(blob, fileName);
+    log.add('success', `Результат збережено у ${fileName} (${formatBytes(blob.size)})`);
+    toast('success', `Збережено ${fileName}`);
   }
 
   function clear({ silent = false } = {}) {
     loadToken++;
+    recognizeToken++;
+    prediction = null;
     image?.bitmap.close();
     image = null;
     canvas.hidden = true;
@@ -104,7 +229,7 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     showGrid.checked = false;
     caption.textContent = 'Зображення ще не завантажено.';
     if (dialog.open) dialog.close();
-    setControls();
+    renderPrediction();
     if (!silent) log.add('info', 'Зображення очищено');
   }
 
@@ -125,7 +250,7 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     }
 
     const token = ++loadToken;
-    const task = progress.start({ title: `Завантаження «${file.name}»`, total: 3, unit: 'кроків', rateUnit: null });
+    const task = progress.start({ title: `Завантаження «${file.name}»`, total: 3, unit: 'кроків', rateUnit: null, secondary: true });
     try {
       const header = await readFileHeader(file);
       if (token !== loadToken) return;
@@ -143,6 +268,8 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
 
       image?.bitmap.close();
       image = { file, bitmap, format, header, decodeMs, width: bitmap.width, height: bitmap.height };
+      recognizeToken++;
+      prediction = null;
       draw();
       canvas.hidden = false;
       placeholder.hidden = true;
@@ -153,6 +280,7 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
       setControls();
       task.finish(`Завантажено «${file.name}»`);
       log.add('success', `Завантажено ${file.name}: ${image.width}×${image.height}, ${formatBytes(file.size)}, декодування ${formatDuration(decodeMs)}`);
+      recognize();
     } catch (error) {
       if (token !== loadToken) return;
       const text =
@@ -204,7 +332,7 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     const baseName = image.file.name.replace(/\.[^.]+$/, '');
     const suffix = showGrid.checked ? `_grid${gridModel.get()}` : '_result';
     const fileName = `${baseName}${suffix}.${format}`;
-    const task = progress.start({ title: `Збереження ${fileName}`, total: 2, unit: 'кроків', rateUnit: null });
+    const task = progress.start({ title: `Збереження ${fileName}`, total: 2, unit: 'кроків', rateUnit: null, secondary: true });
     try {
       await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
       const blob = await exportCanvas(canvas, format);
@@ -268,6 +396,9 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     if (event.target === dialog) dialog.close();
   });
   saveButtons.forEach((button) => button.addEventListener('click', () => save(button.dataset.save)));
+  byId('saveResultCsv').addEventListener('click', () => saveResult('csv'));
+  byId('saveResultJson').addEventListener('click', () => saveResult('json'));
+  modelState.subscribe(recognize);
 
   clear({ silent: true });
 }

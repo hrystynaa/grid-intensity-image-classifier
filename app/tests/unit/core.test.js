@@ -15,7 +15,7 @@ import { cellBoundaries } from '../../src/core/gridLayout.js';
 import { parseImageHeader, readFileHeader } from '../../src/core/imageHeader.js';
 import { createOperationLog } from '../../src/core/operationLog.js';
 import { computeProgress } from '../../src/core/progress.js';
-import { validateTrainingParams } from '../../src/core/validation.js';
+import { isRateTooHigh, recommendedLearningRate, validateTrainingParams } from '../../src/core/validation.js';
 
 const png = (width, height, colorType = 2) => {
   const bytes = new Uint8Array(33);
@@ -257,24 +257,45 @@ describe('operation log', () => {
 });
 
 describe('training parameter validation', () => {
-  const good = { epochs: '500', learningRate: '0.05', gridSize: '8', hiddenNeurons: '0' };
+  const good = { epochs: '500', learningRate: '0.05', gridSize: '8', encoding: 'number', hiddenNeurons: '8' };
+  const GRIDS = [4, 8, 12, 16, 24, 32];
+
+  it('recommends a smaller learning rate for larger grids', () => {
+    assert.deepEqual(GRIDS.map((grid) => recommendedLearningRate(grid)), [0.05, 0.013, 0.0056, 0.0031, 0.0014, 0.00078]);
+    assert.deepEqual(GRIDS.map((grid) => recommendedLearningRate(grid, 'bits')), [0.5, 0.39, 0.17, 0.098, 0.043, 0.024]);
+  });
+
+  it('flags only rates that were measured as unstable', () => {
+    assert.equal(isRateTooHigh(0.05, 32), true);
+    assert.equal(isRateTooHigh(0.03, 32), false);
+    assert.equal(isRateTooHigh(0.3, 16), true);
+    assert.equal(isRateTooHigh(0.1, 16), false);
+    assert.equal(isRateTooHigh(0.9, 8), false);
+    assert.equal(isRateTooHigh(0.3, 16, 'bits'), true);
+    assert.equal(isRateTooHigh(0.15, 16, 'bits'), false);
+    assert.equal(isRateTooHigh(0.9, 8, 'bits'), true);
+    assert.equal(isRateTooHigh(0.99, 4, 'bits'), false);
+    for (const encoding of ['number', 'bits']) {
+      for (const grid of GRIDS) assert.equal(isRateTooHigh(recommendedLearningRate(grid, encoding), grid, encoding), false);
+    }
+  });
 
   it('accepts valid values, including a decimal comma', () => {
     const result = validateTrainingParams({ ...good, learningRate: '0,05' });
     assert.equal(result.valid, true);
-    assert.deepEqual(result.values, { epochs: 500, learningRate: 0.05, gridSize: 8, hiddenNeurons: 0 });
+    assert.deepEqual(result.values, { epochs: 500, learningRate: 0.05, gridSize: 8, encoding: 'number', hiddenNeurons: 8 });
   });
 
   it('accepts boundary values', () => {
     assert.equal(validateTrainingParams({ ...good, epochs: '1', learningRate: '0.0001' }).valid, true);
-    assert.equal(validateTrainingParams({ ...good, epochs: '10000', learningRate: '1', hiddenNeurons: '256' }).valid, true);
+    assert.equal(validateTrainingParams({ ...good, epochs: '10000', learningRate: '0.99', hiddenNeurons: '256' }).valid, true);
   });
 
   it('rejects invalid values with a field error', () => {
     for (const [field, value] of [
       ['epochs', '0'], ['epochs', '10001'], ['epochs', '1.5'], ['epochs', ''], ['epochs', 'abc'],
-      ['learningRate', '0'], ['learningRate', '1.01'], ['learningRate', '-0.1'], ['learningRate', ''],
-      ['gridSize', '7'], ['hiddenNeurons', '-1'], ['hiddenNeurons', '257'],
+      ['learningRate', '0'], ['learningRate', '1'], ['learningRate', '1.01'], ['learningRate', '-0.1'], ['learningRate', ''],
+      ['gridSize', '7'], ['encoding', 'other'], ['encoding', ''], ['hiddenNeurons', '-1'], ['hiddenNeurons', '257'],
     ]) {
       const result = validateTrainingParams({ ...good, [field]: value });
       assert.equal(result.valid, false, `${field}=${value}`);

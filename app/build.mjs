@@ -4,26 +4,9 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { build } from 'esbuild';
+import { appDir, bundle, workerDefines } from './scripts/bundle.mjs';
 
-const appDir = dirname(fileURLToPath(import.meta.url));
 const outFile = join(appDir, 'dist', 'index.html');
-
-async function bundle(entry, options = {}) {
-  const result = await build({
-    entryPoints: [join(appDir, entry)],
-    bundle: true,
-    minify: true,
-    write: false,
-    charset: 'utf8',
-    legalComments: 'none',
-    target: ['chrome110', 'edge110', 'firefox115'],
-    logLevel: 'warning',
-    ...options,
-  });
-  return result.outputFiles[0].text;
-}
 
 function openInBrowser(path) {
   const commands = {
@@ -36,7 +19,7 @@ function openInBrowser(path) {
 
 const [template, script, styles] = await Promise.all([
   readFile(join(appDir, 'src', 'index.html'), 'utf8'),
-  bundle('src/main.js', { format: 'iife' }),
+  bundle('src/main.js', { format: 'iife', define: await workerDefines() }),
   bundle('src/styles.css'),
 ]);
 

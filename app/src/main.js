@@ -9,6 +9,8 @@ import { initRecognizePanel } from './ui/recognizePanel.js';
 import { initTabs } from './ui/tabs.js';
 import { createToaster } from './ui/toast.js';
 import { initTrainPanel } from './ui/trainPanel.js';
+import { createFeatureExtractor } from './workers/featurePool.js';
+import { createModelClient } from './workers/modelClient.js';
 
 const log = createOperationLog();
 const toast = createToaster();
@@ -16,10 +18,29 @@ const progress = createProgressView();
 const tabs = initTabs();
 const gridModel = createValue(DEFAULT_GRID_SIZE);
 const headerStatus = byId('headerStatus');
+const modelClient = createModelClient();
+const modelState = createValue(null);
 
 initLogView(log, toast);
-const trainPanel = initTrainPanel({ log, gridModel });
-initRecognizePanel({ log, progress, toast, gridModel });
+const trainPanel = initTrainPanel({
+  log,
+  progress,
+  toast,
+  gridModel,
+  modelClient,
+  modelState,
+  extractor: createFeatureExtractor(),
+});
+initRecognizePanel({
+  log,
+  progress,
+  toast,
+  gridModel,
+  modelClient,
+  modelState,
+  extractor: createFeatureExtractor({ size: 1 }),
+});
+modelState.subscribe((model) => tabs.setDone('train', Boolean(model)));
 initDataPanel({
   log,
   progress,

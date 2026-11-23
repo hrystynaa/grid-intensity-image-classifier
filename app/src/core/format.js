@@ -39,6 +39,12 @@ export function formatDuration(ms) {
   return hours > 0 ? `${hours} год ${pad(minutes)} хв` : `${minutes} хв ${pad(total % 60)} с`;
 }
 
+export const formatPercent = (fraction, digits = 1) =>
+  Number.isFinite(fraction) ? `${decimal(fraction * 100, digits)}%` : '—';
+
+export const formatMetric = (value) =>
+  Number.isFinite(value) ? String(Number(value.toPrecision(3))).replace('.', ',') : '—';
+
 export function formatClock(date) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }

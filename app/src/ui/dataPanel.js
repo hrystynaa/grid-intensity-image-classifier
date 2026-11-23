@@ -154,6 +154,7 @@ export function initDataPanel({ log, progress, toast, onSelectionChange, onConti
       title: `Перевірка зображень у папці «${dataset.rootName}»`,
       total: dataset.entries.length,
       onCancel: () => current.abort(),
+      secondary: true,
     });
 
     try {

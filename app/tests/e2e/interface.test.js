@@ -122,7 +122,7 @@ describe('interface', () => {
     assert.match(await page.locator('#trainDataset').innerText(), /36 зображень/);
     await page.locator('#learningRate').fill('0');
     await page.locator('#learningRate').blur();
-    assert.match(await page.locator('#learningRate-error').innerText(), /від 0,0001 до 1/);
+    assert.match(await page.locator('#learningRate-error').innerText(), /від 0,0001 до 0,99/);
     await page.locator('#epochs').fill('1.5');
     assert.equal(await page.locator('#epochs').getAttribute('aria-invalid'), 'true');
     await shot('03-train-errors');

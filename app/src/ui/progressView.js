@@ -51,7 +51,12 @@ export function createProgressView() {
   cancel.addEventListener('click', () => current?.onCancel?.());
 
   return {
-    start({ title: taskTitle, total, unit = 'зображень', rateUnit = 'зобр.', onCancel }) {
+    // A secondary task never takes the progress card away from a running operation.
+    start({ title: taskTitle, total, unit = 'зображень', rateUnit = 'зобр.', onCancel, secondary = false }) {
+      if (secondary && current?.active) {
+        const noop = () => {};
+        return { startedAt: performance.now(), update: noop, finish: noop, fail: noop, cancelled: noop };
+      }
       if (current) current.active = false;
       stopTimer();
       const task = {

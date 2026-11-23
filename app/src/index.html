@@ -99,9 +99,13 @@
             </div>
             <div class="field">
               <label for="learningRate">Швидкість навчання</label>
-              <input id="learningRate" name="learningRate" type="number" inputmode="decimal" min="0.0001" max="1" step="any" value="0.05" aria-describedby="learningRate-hint learningRate-error">
-              <p id="learningRate-hint" class="hint">Розмір кроку під час зміни ваг. Від 0,0001 до 1.</p>
+              <input id="learningRate" name="learningRate" type="number" inputmode="decimal" min="0.0001" max="0.99" step="any" value="0.013" aria-describedby="learningRate-hint learningRate-error learningRate-warning-text">
+              <p id="learningRate-hint" class="hint">Розмір кроку під час зміни ваг. Від 0,0001 до 0,99. Для більшої сітки потрібна менша швидкість.</p>
               <p id="learningRate-error" class="field-error" hidden></p>
+              <div id="learningRate-warning" class="field-warning" hidden>
+                <span id="learningRate-warning-text"></span>
+                <button id="applyRate" class="btn btn-small" type="button">Поставити рекомендовану</button>
+              </div>
             </div>
             <div class="field">
               <label for="gridSize">Розмір сітки</label>
@@ -110,9 +114,15 @@
               <p id="gridSize-error" class="field-error" hidden></p>
             </div>
             <div class="field">
+              <label for="encoding">Кодування яскравості</label>
+              <select id="encoding" name="encoding" aria-describedby="encoding-hint encoding-error"></select>
+              <p id="encoding-hint" class="hint">Як середня яскравість клітинки подається на входи мережі: одним числом або вісьмома бітами.</p>
+              <p id="encoding-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
               <label for="hiddenNeurons">Нейронів у прихованому шарі</label>
-              <input id="hiddenNeurons" name="hiddenNeurons" type="number" inputmode="numeric" min="0" max="256" step="1" value="0" aria-describedby="hiddenNeurons-hint hiddenNeurons-error">
-              <p id="hiddenNeurons-hint" class="hint">0 означає одношарову мережу, як у статті. Максимум 256.</p>
+              <input id="hiddenNeurons" name="hiddenNeurons" type="number" inputmode="numeric" min="0" max="256" step="1" value="8" aria-describedby="hiddenNeurons-hint hiddenNeurons-error">
+              <p id="hiddenNeurons-hint" class="hint">0 означає мережу без прихованого шару. Максимум 256.</p>
               <p id="hiddenNeurons-error" class="field-error" hidden></p>
             </div>
           </div>
@@ -123,19 +133,76 @@
               <button id="startTraining" class="btn btn-primary" type="submit" disabled>Почати навчання</button>
             </div>
           </div>
-          <p class="notice">Навчання мережі підключається у другій лабораторній роботі. Зараз можна налаштувати й перевірити параметри.</p>
         </form>
 
         <div class="split">
           <article class="card">
             <h3>Графік помилки</h3>
-            <div class="empty empty-tall">Під час навчання тут буде видно, як змінюється помилка після кожної епохи.</div>
+            <p class="muted small chart-note">Середньоквадратична помилка на навчальних зображеннях під час кожної епохи.</p>
+            <div id="errorChartEmpty" class="empty empty-tall">Під час навчання тут буде видно, як змінюється помилка після кожної епохи.</div>
+            <div id="errorChart" hidden></div>
           </article>
           <article class="card">
-            <h3>Історія запусків</h3>
-            <div class="empty empty-tall">Тут з’являться набір, кількість зображень, епохи, швидкість, час і точність кожного запуску.</div>
+            <h3>Результат навчання</h3>
+            <div id="resultEmpty" class="empty empty-tall">Після навчання тут з’являться точність, час і таблиця помилок.</div>
+            <div id="resultBody" hidden>
+              <dl class="stats">
+                <div><dt>Точність на перевірці</dt><dd id="resultValidation">—</dd></div>
+                <div><dt>Точність на навчанні</dt><dd id="resultTrain">—</dd></div>
+                <div><dt>Час навчання</dt><dd id="resultTime">—</dd></div>
+              </dl>
+              <p id="resultNote" class="muted small result-note"></p>
+              <div id="confusionWrap" hidden>
+                <p class="muted small confusion-title">Помилки на перевірці: рядок показує справжній клас, стовпець показує відповідь мережі.</p>
+                <div class="table-wrap">
+                  <table class="data-table confusion-table">
+                    <caption class="visually-hidden">Таблиця помилок на перевірці</caption>
+                    <thead><tr id="confusionHead"></tr></thead>
+                    <tbody id="confusionBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="button-row result-actions">
+              <button id="loadModel" class="btn btn-small" type="button">Завантажити модель</button>
+              <button id="saveModel" class="btn btn-small" type="button" disabled>Зберегти модель у JSON</button>
+            </div>
+            <input id="modelInput" class="visually-hidden" type="file" accept=".json,application/json" tabindex="-1" aria-label="Файл моделі">
           </article>
         </div>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>Історія запусків</h3>
+            <div class="button-row">
+              <button id="saveRunsCsv" class="btn btn-small" type="button" disabled>Зберегти у CSV</button>
+              <button id="saveRunsJson" class="btn btn-small" type="button" disabled>Зберегти у JSON</button>
+            </div>
+          </div>
+          <div id="runsEmpty" class="empty">Тут з’являться набір, кількість зображень, епохи, швидкість, час і точність кожного запуску.</div>
+          <div id="runsWrap" class="table-wrap" hidden>
+            <table class="data-table runs-table">
+              <caption class="visually-hidden">Історія запусків навчання</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Запуск</th>
+                  <th scope="col">Групи якості</th>
+                  <th scope="col">Навчання / перевірка</th>
+                  <th scope="col">Сітка</th>
+                  <th scope="col">Кодування</th>
+                  <th scope="col">Прихований шар</th>
+                  <th scope="col">Епохи</th>
+                  <th scope="col">Швидкість</th>
+                  <th scope="col">Час ознак</th>
+                  <th scope="col">Час навчання</th>
+                  <th scope="col">Помилка</th>
+                  <th scope="col">Точність на перевірці</th>
+                </tr>
+              </thead>
+              <tbody id="runsBody"></tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <section id="panel-recognize" class="panel" role="tabpanel" aria-labelledby="tab-recognize" hidden>
@@ -179,7 +246,11 @@
             <article class="card">
               <h3>Результат розпізнавання</h3>
               <ul id="classResults" class="class-results"></ul>
-              <p class="muted small">Імовірності з’являться після навчання моделі.</p>
+              <p id="recognitionSummary" class="muted small">Імовірності з’являться після навчання моделі.</p>
+              <div class="save-row result-save">
+                <button id="saveResultCsv" class="btn btn-small" type="button" disabled>Зберегти результат у CSV</button>
+                <button id="saveResultJson" class="btn btn-small" type="button" disabled>Зберегти результат у JSON</button>
+              </div>
             </article>
             <article class="card">
               <h3>Зберегти зображення</h3>
