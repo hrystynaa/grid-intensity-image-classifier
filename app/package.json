@@ -5,16 +5,20 @@
   "description": "Browser image classifier based on mean grid-cell intensities and a Brain.js neural network",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
-    "test": "node --test tests/unit/"
+    "build": "node build.mjs",
+    "start": "node build.mjs --open",
+    "test": "node --test \"tests/unit/**/*.test.js\"",
+    "test:e2e": "node build.mjs && node --test --test-concurrency=1 \"tests/e2e/**/*.test.js\""
   },
   "dependencies": {
     "brain.js": "2.0.0-beta.24"
   },
   "devDependencies": {
     "esbuild": "0.28.2",
-    "playwright-core": "1.65.1"
+    "playwright-core": "1.65.1",
+    "sharp": "0.35.5"
   }
 }

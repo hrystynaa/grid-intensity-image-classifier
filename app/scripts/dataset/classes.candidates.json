@@ -1,0 +1,38 @@
+{
+  "targetPerClass": 320,
+  "pagesPerQuery": 4,
+  "queries": {
+    "forest": [
+      "dense forest trees", "pine forest", "spruce forest", "beech forest",
+      "woodland forest path", "coniferous forest", "deciduous forest", "old growth forest"
+    ],
+    "snow_mountains": [
+      "snow covered mountains", "snowy peaks alps", "alpine peaks snow", "Himalaya snow peak",
+      "mountain range snow", "glaciated peaks", "Patagonia snowy mountains", "winter mountain landscape"
+    ],
+    "waterfall": [
+      "waterfall", "waterfall long exposure", "waterfall forest", "waterfall Iceland",
+      "cascade river waterfall", "falls gorge", "Plitvice waterfall", "waterfall Norway"
+    ],
+    "cave": [
+      "cave interior", "limestone cave", "cave stalactites", "cave entrance",
+      "karst cave", "cavern", "grotto rock", "lava tube"
+    ],
+    "canyon": [
+      "canyon landscape", "Grand Canyon", "gorge canyon rock", "slot canyon",
+      "Antelope Canyon", "Bryce Canyon", "canyon river view", "Canyonlands"
+    ],
+    "lake": [
+      "mountain lake reflection", "alpine lake", "lake landscape", "calm lake reflection",
+      "Lake Louise", "mountain tarn", "lake shore forest", "glacial lake"
+    ],
+    "starry_sky": [
+      "milky way night sky", "starry night landscape", "night sky stars", "astrophotography milky way",
+      "star trails", "stars over mountains", "night sky landscape", "milky way over"
+    ],
+    "aurora": [
+      "aurora borealis", "northern lights", "aurora polaris landscape", "aurora Iceland",
+      "aurora Norway", "aurora australis", "northern lights landscape", "aurora Finland"
+    ]
+  }
+}

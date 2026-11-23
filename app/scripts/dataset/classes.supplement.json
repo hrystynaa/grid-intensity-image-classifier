@@ -1,0 +1,22 @@
+{
+  "targetPerClass": 320,
+  "pagesPerQuery": 4,
+  "excludeCandidates": [
+    "../assets/_work/landscape-check/candidates.json",
+    "../assets/_work/landscape-check-2/candidates.json"
+  ],
+  "queries": {
+    "snowfield": [
+      "snow covered field", "snowy field winter", "field under snow", "snowy meadow",
+      "winter field snow", "snowy farmland", "snow covered meadow", "open snowfield",
+      "frozen field snow", "snowy pasture", "snow covered prairie", "winter fields snow",
+      "snowy plain horizon", "flat snow landscape"
+    ],
+    "starry_sky": [
+      "milky way landscape", "milky way desert night", "milky way mountains silhouette",
+      "stars silhouette trees night", "night sky long exposure stars", "milky way lake",
+      "starry sky forest", "dark sky park stars", "star trails landscape",
+      "night sky stars horizon", "galactic core landscape"
+    ]
+  }
+}

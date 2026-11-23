@@ -1,0 +1,16 @@
+{
+  "targetPerClass": 240,
+  "pagesPerQuery": 4,
+  "excludeCandidates": [
+    "../assets/_work/landscape-check/candidates.json",
+    "../assets/_work/landscape-check-2/candidates.json",
+    "../assets/_work/landscape-check-3/candidates.json"
+  ],
+  "queries": {
+    "snowfield": [
+      "open snowfield", "winter fields snow", "Schneefeld", "Winterlandschaft Feld",
+      "verschneite Felder", "verschneite Wiese", "champ enneigé", "paysage enneigé plaine",
+      "campo nevado", "snow covered farmland", "зимове поле", "снігове поле"
+    ]
+  }
+}
