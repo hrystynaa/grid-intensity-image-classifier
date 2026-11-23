@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Розпізнавання пейзажів за середньою яскравістю клітинок сітки">
+  <title>LumaGrid</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 3'%3E%3Crect width='1' height='1' fill='%23173a4a'/%3E%3Crect x='1' width='1' height='1' fill='%232f7f9c'/%3E%3Crect x='2' width='1' height='1' fill='%2392c6d6'/%3E%3Crect y='1' width='1' height='1' fill='%232f7f9c'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%2392c6d6'/%3E%3Crect x='2' y='1' width='1' height='1' fill='%23e3f0f4'/%3E%3Crect y='2' width='1' height='1' fill='%2392c6d6'/%3E%3Crect x='1' y='2' width='1' height='1' fill='%23e3f0f4'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23173a4a'/%3E%3C/svg%3E">
+  <!--STYLES-->
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 3 3" aria-hidden="true">
+        <rect width="1" height="1" fill="#173a4a"/><rect x="1" width="1" height="1" fill="#2f7f9c"/><rect x="2" width="1" height="1" fill="#92c6d6"/>
+        <rect y="1" width="1" height="1" fill="#2f7f9c"/><rect x="1" y="1" width="1" height="1" fill="#92c6d6"/><rect x="2" y="1" width="1" height="1" fill="#e3f0f4"/>
+        <rect y="2" width="1" height="1" fill="#92c6d6"/><rect x="1" y="2" width="1" height="1" fill="#e3f0f4"/><rect x="2" y="2" width="1" height="1" fill="#173a4a"/>
+      </svg>
+      <div>
+        <h1>LumaGrid</h1>
+        <p>Розпізнавання пейзажів за яскравістю клітинок сітки</p>
+      </div>
+    </div>
+    <p id="headerStatus" class="header-status">Дані ще не обрано</p>
+  </header>
+
+  <nav class="steps" role="tablist" aria-label="Етапи роботи">
+    <button id="tab-data" class="step" role="tab" aria-selected="true" aria-controls="panel-data"><span class="step-number">1</span>Дані</button>
+    <button id="tab-train" class="step" role="tab" aria-selected="false" aria-controls="panel-train" tabindex="-1"><span class="step-number">2</span>Навчання</button>
+    <button id="tab-recognize" class="step" role="tab" aria-selected="false" aria-controls="panel-recognize" tabindex="-1"><span class="step-number">3</span>Розпізнавання</button>
+  </nav>
+
+  <div class="workspace">
+    <main>
+      <section id="panel-data" class="panel" role="tabpanel" aria-labelledby="tab-data">
+        <div class="panel-head">
+          <h2>Дані для навчання</h2>
+          <p>Оберіть папку <code>assets</code> або одну групу якості, а потім позначте, на яких зображеннях навчати мережу.</p>
+        </div>
+
+        <article class="card picker">
+          <div>
+            <h3>Папка із зображеннями</h3>
+            <p id="folderStatus" class="muted">Папку ще не обрано. Очікувана структура: <code>assets / група якості / клас / файл</code>.</p>
+          </div>
+          <button id="folderButton" class="btn btn-primary" type="button">Обрати папку</button>
+          <input id="folderInput" class="visually-hidden" type="file" webkitdirectory multiple tabindex="-1" aria-label="Папка із зображеннями">
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>Групи якості</h3>
+            <label class="check"><input id="allGroups" type="checkbox" disabled> Уся папка</label>
+          </div>
+          <div id="groupsEmpty" class="empty">Після вибору папки тут з’являться групи якості з кількістю зображень кожного класу.</div>
+          <div id="groupsWrap" class="table-wrap" hidden>
+            <table class="data-table">
+              <caption class="visually-hidden">Групи зображень за якістю та класами</caption>
+              <thead><tr id="groupsHead"></tr></thead>
+              <tbody id="groupsBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <div class="split">
+          <article class="card">
+            <h3>Формат файлів</h3>
+            <fieldset id="formatFilters" class="format-filters" disabled>
+              <legend class="visually-hidden">Формати файлів для навчання</legend>
+            </fieldset>
+          </article>
+
+          <article class="card">
+            <h3>Обраний набір</h3>
+            <dl class="stats">
+              <div><dt>Зображень</dt><dd id="selTotal">0</dd></div>
+              <div><dt>Обсяг</dt><dd id="selBytes">0 Б</dd></div>
+              <div><dt>Класів</dt><dd id="selClasses">0</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <div class="panel-foot">
+          <p id="selectionMessage" class="status-line" data-level="idle">Оберіть папку, щоб сформувати набір.</p>
+          <button id="toTraining" class="btn btn-primary" type="button" disabled>Перейти до навчання</button>
+        </div>
+      </section>
+
+      <section id="panel-train" class="panel" role="tabpanel" aria-labelledby="tab-train" hidden>
+        <div class="panel-head">
+          <h2>Навчання мережі</h2>
+          <p id="trainDataset">Набір ще не обрано. Спершу виберіть зображення на етапі «Дані».</p>
+        </div>
+
+        <form id="trainForm" class="card" novalidate>
+          <h3>Параметри навчання</h3>
+          <div class="form-grid">
+            <div class="field">
+              <label for="epochs">Кількість епох</label>
+              <input id="epochs" name="epochs" type="number" inputmode="numeric" min="1" max="10000" step="1" value="500" aria-describedby="epochs-hint epochs-error">
+              <p id="epochs-hint" class="hint">Скільки разів мережа пройде весь навчальний набір. Від 1 до 10 000.</p>
+              <p id="epochs-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="learningRate">Швидкість навчання</label>
+              <input id="learningRate" name="learningRate" type="number" inputmode="decimal" min="0.0001" max="1" step="any" value="0.05" aria-describedby="learningRate-hint learningRate-error">
+              <p id="learningRate-hint" class="hint">Розмір кроку під час зміни ваг. Від 0,0001 до 1.</p>
+              <p id="learningRate-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="gridSize">Розмір сітки</label>
+              <select id="gridSize" name="gridSize" aria-describedby="gridSize-hint gridSize-error"></select>
+              <p id="gridSize-hint" class="hint">На скільки клітинок ділиться зображення. Кожна клітинка дає одну ознаку.</p>
+              <p id="gridSize-error" class="field-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="hiddenNeurons">Нейронів у прихованому шарі</label>
+              <input id="hiddenNeurons" name="hiddenNeurons" type="number" inputmode="numeric" min="0" max="256" step="1" value="0" aria-describedby="hiddenNeurons-hint hiddenNeurons-error">
+              <p id="hiddenNeurons-hint" class="hint">0 означає одношарову мережу, як у статті. Максимум 256.</p>
+              <p id="hiddenNeurons-error" class="field-error" hidden></p>
+            </div>
+          </div>
+          <div class="form-foot">
+            <p id="networkSummary" class="muted"></p>
+            <div class="button-row">
+              <button id="stopTraining" class="btn" type="button" disabled>Зупинити</button>
+              <button id="startTraining" class="btn btn-primary" type="submit" disabled>Почати навчання</button>
+            </div>
+          </div>
+          <p class="notice">Навчання мережі підключається у другій лабораторній роботі. Зараз можна налаштувати й перевірити параметри.</p>
+        </form>
+
+        <div class="split">
+          <article class="card">
+            <h3>Графік помилки</h3>
+            <div class="empty empty-tall">Під час навчання тут буде видно, як змінюється помилка після кожної епохи.</div>
+          </article>
+          <article class="card">
+            <h3>Історія запусків</h3>
+            <div class="empty empty-tall">Тут з’являться набір, кількість зображень, епохи, швидкість, час і точність кожного запуску.</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="panel-recognize" class="panel" role="tabpanel" aria-labelledby="tab-recognize" hidden>
+        <div class="panel-head">
+          <h2>Розпізнавання зображення</h2>
+          <p>Завантажте фото, перегляньте його поділ на клітинки та збережіть результат.</p>
+        </div>
+
+        <div class="recognize-grid">
+          <article class="card stage-card">
+            <div class="toolbar">
+              <button id="chooseImage" class="btn btn-primary" type="button">Обрати зображення</button>
+              <label class="check"><input id="showGrid" type="checkbox" disabled> Показати сітку</label>
+              <label class="inline-field">Сітка
+                <select id="viewGridSize" disabled></select>
+              </label>
+              <span class="toolbar-spacer"></span>
+              <button id="infoButton" class="btn btn-icon" type="button" disabled aria-label="Інформація про зображення" title="Інформація про зображення">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/></svg>
+              </button>
+              <button id="clearImage" class="btn" type="button" disabled>Очистити</button>
+            </div>
+            <input id="imageInput" class="visually-hidden" type="file" accept=".jpg,.jpeg,.png,.bmp,image/jpeg,image/png,image/bmp" tabindex="-1" aria-label="Зображення для розпізнавання">
+            <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Обрати або перетягнути зображення для розпізнавання">
+              <div id="dropPlaceholder" class="drop-placeholder">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16l4.5-4.5 3.5 3.5 3-3 5 5M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="15.5" cy="9" r="1.5" fill="currentColor"/></svg>
+                <strong>Перетягніть зображення сюди</strong>
+                <span>або натисніть, щоб обрати файл JPG, PNG чи BMP</span>
+              </div>
+              <canvas id="imageCanvas" hidden></canvas>
+            </div>
+            <p id="imageCaption" class="muted image-caption">Зображення ще не завантажено.</p>
+          </article>
+
+          <div class="side-stack">
+            <article class="card">
+              <h3>Результат розпізнавання</h3>
+              <ul id="classResults" class="class-results"></ul>
+              <p class="muted small">Імовірності з’являться після навчання моделі.</p>
+            </article>
+            <article class="card">
+              <h3>Зберегти зображення</h3>
+              <div class="save-row">
+                <button class="btn" type="button" data-save="png" disabled>PNG</button>
+                <button class="btn" type="button" data-save="jpg" disabled>JPG</button>
+                <button class="btn" type="button" data-save="bmp" disabled>BMP</button>
+              </div>
+              <p id="saveHint" class="muted small">Спершу завантажте зображення. Збережеться те, що показано, разом із сіткою.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="activity" aria-label="Хід виконання">
+      <article id="progressCard" class="card progress-card" data-state="idle">
+        <div class="card-head">
+          <h3>Хід виконання</h3>
+          <button id="cancelTask" class="btn btn-small" type="button" hidden>Скасувати</button>
+        </div>
+        <p id="progressTitle" class="progress-title">Немає активної операції</p>
+        <div id="progressBar" class="progress-track" role="progressbar" aria-label="Виконання операції" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <p id="progressCount" class="progress-count">0%</p>
+        <dl class="timing">
+          <div><dt>Минуло</dt><dd id="progressElapsed">—</dd></div>
+          <div><dt>Залишилось</dt><dd id="progressEta">—</dd></div>
+          <div><dt>Швидкість</dt><dd id="progressRate">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="card log-card">
+        <div class="card-head">
+          <h3>Журнал операцій</h3>
+          <label class="inline-field">Показати
+            <select id="logFilter">
+              <option value="all">усе</option>
+              <option value="info">інфо</option>
+              <option value="success">успіх</option>
+              <option value="warn">увага</option>
+              <option value="error">помилки</option>
+            </select>
+          </label>
+        </div>
+        <ol id="logList" class="log-list" tabindex="0" aria-label="Записи журналу операцій"></ol>
+        <p id="logEmpty" class="empty" hidden>Записів немає.</p>
+        <div class="button-row">
+          <button id="clearLog" class="btn btn-small" type="button">Очистити</button>
+          <button id="saveLog" class="btn btn-small" type="button">Зберегти у файл</button>
+        </div>
+      </article>
+    </aside>
+  </div>
+
+  <dialog id="infoDialog" class="info-dialog" aria-labelledby="infoTitle">
+    <div class="card-head">
+      <h3 id="infoTitle">Інформація про зображення</h3>
+      <button id="closeInfo" class="btn btn-small" type="button">Закрити</button>
+    </div>
+    <dl id="infoList" class="info-list"></dl>
+  </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+  <!--SCRIPT-->
+</body>
+</html>
