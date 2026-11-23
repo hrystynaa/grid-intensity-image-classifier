@@ -22,6 +22,8 @@ const MIN_HEIGHT = 2160;
 const WORKERS = 1;
 const MAX_BYTES_PER_SECOND = 1024 * 1024;
 const MIN_PAUSE_MS = 2000;
+const BODY_ATTEMPTS = 3;
+const NETWORK_RETRY_PAUSE_MS = 30000;
 const SHUFFLE_SEED = 2026;
 
 function seededShuffle(list, seed) {
@@ -63,10 +65,23 @@ async function loadAccepted() {
   return byClass;
 }
 
+async function downloadBytes(url) {
+  let lastError;
+  for (let attempt = 1; attempt <= BODY_ATTEMPTS; attempt++) {
+    const response = await fetchWithRetry(url);
+    try {
+      return Buffer.from(await response.arrayBuffer());
+    } catch (error) {
+      lastError = error;
+      await sleep(5000 * attempt);
+    }
+  }
+  throw Object.assign(lastError, { transient: true });
+}
+
 async function fetchOriginal(item) {
   const path = join(originalsDir, item.className, `${item.id}.jpg`);
-  const response = await fetchWithRetry(item.url);
-  const data = Buffer.from(await response.arrayBuffer());
+  const data = await downloadBytes(item.url);
   const sha1 = createHash('sha1').update(data).digest('hex');
   if (sha1 !== item.sha1) throw new Error('checksum mismatch');
 
@@ -108,7 +123,12 @@ async function main() {
           if (okCount % 10 === 0) console.log(`${className}: ${okCount}/${PER_CLASS}`);
         } catch (error) {
           await rm(join(originalsDir, className, `${item.id}.jpg.part`), { force: true });
-          if (error.transient) throw error;
+          if (error.message === 'HTTP 429') throw error;
+          if (error.transient) {
+            console.log(`${className}: will retry ${item.id} on the next run: ${error.message}`);
+            await sleep(NETWORK_RETRY_PAUSE_MS);
+            continue;
+          }
           progress[item.id] = { ok: false, error: error.message };
           console.log(`${className}: skipped ${item.id}: ${error.message}`);
         }
