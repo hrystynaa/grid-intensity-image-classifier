@@ -68,6 +68,9 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     showGrid.disabled = !loaded;
     viewGrid.disabled = !loaded;
     infoButton.disabled = !loaded;
+    infoButton.title = loaded
+      ? 'Показати розмір, роздільність, розширення та інші дані файлу'
+      : 'Спершу завантажте зображення';
     clearButton.disabled = !loaded;
     saveButtons.forEach((button) => {
       button.disabled = !loaded || saving;
@@ -176,6 +179,7 @@ export function initRecognizePanel({ log, progress, toast, gridModel }) {
     const { file, header, width, height, format, decodeMs } = image;
     const rows = [
       ['Файл', file.name],
+      ['Розширення файлу', file.name.slice(file.name.lastIndexOf('.')).toLowerCase()],
       ['Формат', formatLabel(format)],
       ['MIME-тип', file.type || 'не визначено'],
       ['Розмір файлу', `${formatBytes(file.size)} (${formatNumber(file.size)} байт)`],

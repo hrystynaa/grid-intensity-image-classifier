@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Розпізнавання пейзажів за середньою яскравістю клітинок сітки">
-  <title>LumaGrid</title>
+  <title>Розпізнавання пейзажів</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 3'%3E%3Crect width='1' height='1' fill='%23173a4a'/%3E%3Crect x='1' width='1' height='1' fill='%232f7f9c'/%3E%3Crect x='2' width='1' height='1' fill='%2392c6d6'/%3E%3Crect y='1' width='1' height='1' fill='%232f7f9c'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%2392c6d6'/%3E%3Crect x='2' y='1' width='1' height='1' fill='%23e3f0f4'/%3E%3Crect y='2' width='1' height='1' fill='%2392c6d6'/%3E%3Crect x='1' y='2' width='1' height='1' fill='%23e3f0f4'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23173a4a'/%3E%3C/svg%3E">
   <!--STYLES-->
 </head>
@@ -16,10 +15,7 @@
         <rect y="1" width="1" height="1" fill="#2f7f9c"/><rect x="1" y="1" width="1" height="1" fill="#92c6d6"/><rect x="2" y="1" width="1" height="1" fill="#e3f0f4"/>
         <rect y="2" width="1" height="1" fill="#92c6d6"/><rect x="1" y="2" width="1" height="1" fill="#e3f0f4"/><rect x="2" y="2" width="1" height="1" fill="#173a4a"/>
       </svg>
-      <div>
-        <h1>LumaGrid</h1>
-        <p>Розпізнавання пейзажів за яскравістю клітинок сітки</p>
-      </div>
+      <h1>Розпізнавання пейзажів</h1>
     </div>
     <p id="headerStatus" class="header-status">Дані ще не обрано</p>
   </header>
@@ -123,7 +119,7 @@
           <div class="form-foot">
             <p id="networkSummary" class="muted"></p>
             <div class="button-row">
-              <button id="stopTraining" class="btn" type="button" disabled>Зупинити</button>
+              <button id="stopTraining" class="btn" type="button" disabled>Зупинити навчання</button>
               <button id="startTraining" class="btn btn-primary" type="submit" disabled>Почати навчання</button>
             </div>
           </div>
@@ -150,6 +146,14 @@
 
         <div class="recognize-grid">
           <article class="card stage-card">
+            <div class="card-head">
+              <h3>Вхідне зображення</h3>
+              <button id="infoButton" class="btn btn-info" type="button" disabled title="Спершу завантажте зображення">
+                <!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0) Copyright 2024 Fonticons, Inc. -->
+                <svg viewBox="0 0 512 512" aria-hidden="true"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336l24 0 0-64-24 0c-13.3 0-24-10.7-24-24s10.7-24 24-24l48 0c13.3 0 24 10.7 24 24l0 88 8 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-80 0c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>
+                Інформація про зображення
+              </button>
+            </div>
             <div class="toolbar">
               <button id="chooseImage" class="btn btn-primary" type="button">Обрати зображення</button>
               <label class="check"><input id="showGrid" type="checkbox" disabled> Показати сітку</label>
@@ -157,10 +161,7 @@
                 <select id="viewGridSize" disabled></select>
               </label>
               <span class="toolbar-spacer"></span>
-              <button id="infoButton" class="btn btn-icon" type="button" disabled aria-label="Інформація про зображення" title="Інформація про зображення">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/></svg>
-              </button>
-              <button id="clearImage" class="btn" type="button" disabled>Очистити</button>
+              <button id="clearImage" class="btn" type="button" disabled>Очистити зображення</button>
             </div>
             <input id="imageInput" class="visually-hidden" type="file" accept=".jpg,.jpeg,.png,.bmp,image/jpeg,image/png,image/bmp" tabindex="-1" aria-label="Зображення для розпізнавання">
             <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Обрати або перетягнути зображення для розпізнавання">
@@ -183,9 +184,9 @@
             <article class="card">
               <h3>Зберегти зображення</h3>
               <div class="save-row">
-                <button class="btn" type="button" data-save="png" disabled>PNG</button>
-                <button class="btn" type="button" data-save="jpg" disabled>JPG</button>
-                <button class="btn" type="button" data-save="bmp" disabled>BMP</button>
+                <button class="btn" type="button" data-save="png" disabled>Зберегти як PNG</button>
+                <button class="btn" type="button" data-save="jpg" disabled>Зберегти як JPG</button>
+                <button class="btn" type="button" data-save="bmp" disabled>Зберегти як BMP</button>
               </div>
               <p id="saveHint" class="muted small">Спершу завантажте зображення. Збережеться те, що показано, разом із сіткою.</p>
             </article>
@@ -198,7 +199,7 @@
       <article id="progressCard" class="card progress-card" data-state="idle">
         <div class="card-head">
           <h3>Хід виконання</h3>
-          <button id="cancelTask" class="btn btn-small" type="button" hidden>Скасувати</button>
+          <button id="cancelTask" class="btn btn-small" type="button" hidden>Скасувати операцію</button>
         </div>
         <p id="progressTitle" class="progress-title">Немає активної операції</p>
         <div id="progressBar" class="progress-track" role="progressbar" aria-label="Виконання операції" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -228,8 +229,8 @@
         <ol id="logList" class="log-list" tabindex="0" aria-label="Записи журналу операцій"></ol>
         <p id="logEmpty" class="empty" hidden>Записів немає.</p>
         <div class="button-row">
-          <button id="clearLog" class="btn btn-small" type="button">Очистити</button>
-          <button id="saveLog" class="btn btn-small" type="button">Зберегти у файл</button>
+          <button id="clearLog" class="btn btn-small" type="button">Очистити журнал</button>
+          <button id="saveLog" class="btn btn-small" type="button">Зберегти журнал у файл</button>
         </div>
       </article>
     </aside>

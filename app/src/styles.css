@@ -188,8 +188,9 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 .btn-primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-small { min-height: 32px; padding: 4px 10px; font-size: 13px; }
-.btn-icon { width: 38px; padding: 0; }
-.btn-icon svg { width: 20px; height: 20px; }
+.btn-info { min-height: 34px; padding: 5px 12px; border-color: var(--accent); color: var(--accent-strong); font-size: 14px; }
+.btn-info:disabled { opacity: 0.7; }
+.btn-info svg { width: 17px; height: 17px; flex: none; fill: currentColor; }
 .button-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 
 .check { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; cursor: pointer; }
@@ -284,7 +285,7 @@ input[aria-invalid="true"] { border-color: var(--error); }
 .class-result-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .class-result-value { color: var(--muted); font-variant-numeric: tabular-nums; }
 .meter { height: 7px; margin-top: 3px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
-.save-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.save-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 8px; }
 
 .activity { display: grid; gap: 14px; position: sticky; top: 12px; }
 .progress-title { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
@@ -338,6 +339,7 @@ input[aria-invalid="true"] { border-color: var(--error); }
   .button-row .btn { flex: 1; }
   .dropzone { min-height: 260px; }
   #imageCanvas { height: 300px; }
+  .stage-card .card-head { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

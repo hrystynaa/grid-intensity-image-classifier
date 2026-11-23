@@ -1,4 +1,4 @@
-import { formatClock } from '../core/format.js';
+import { formatClock, formatDateTime } from '../core/format.js';
 import { LOG_LEVELS } from '../core/operationLog.js';
 import { byId, element, saveBlob } from './dom.js';
 
@@ -36,8 +36,8 @@ export function initLogView(log, toast) {
       toast('warn', 'Журнал порожній, зберігати нічого.');
       return;
     }
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    const fileName = `lumagrid-log-${stamp}.log`;
+    const stamp = formatDateTime(new Date()).replace(/[ :]/g, '-');
+    const fileName = `журнал-операцій-${stamp}.log`;
     saveBlob(new Blob(['﻿', log.toText(), '\r\n'], { type: 'text/plain;charset=utf-8' }), fileName);
     log.add('success', `Журнал збережено у файл ${fileName}`);
   });

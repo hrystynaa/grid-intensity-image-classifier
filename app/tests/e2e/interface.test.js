@@ -69,7 +69,9 @@ describe('interface', () => {
   });
 
   it('opens from a local file with safe initial states', async () => {
-    assert.equal(await page.title(), 'LumaGrid');
+    assert.equal(await page.title(), 'Розпізнавання пейзажів');
+    assert.equal(await page.locator('h1').innerText(), 'Розпізнавання пейзажів');
+    assert.equal(await page.locator('.brand p').count(), 0);
     assert.equal(await page.locator('#toTraining').isDisabled(), true);
     assert.match(await page.locator('#logList').innerText(), /Застосунок запущено/);
     assert.equal(await page.locator('#progressBar').getAttribute('aria-valuenow'), '0');
@@ -138,6 +140,8 @@ describe('interface', () => {
   it('rejects invalid image files with a clear message', async () => {
     await page.locator('#tab-recognize').click();
     assert.equal(await page.locator('[data-save="png"]').isDisabled(), true);
+    assert.equal(await page.locator('#infoButton svg').isVisible(), true);
+    assert.match(await page.locator('#infoButton').innerText(), /Інформація про зображення/);
     for (const [file, pattern] of [
       ['bad.txt', /не підтримується/],
       ['empty.jpg', /порожній/],
@@ -161,6 +165,8 @@ describe('interface', () => {
     await page.locator('#infoButton').click();
     const info = await page.locator('#infoList').innerText();
     assert.match(info, /200 × 100 px/);
+    assert.match(info, /Розширення файлу\s+\.png/);
+    assert.match(info, /Розмір файлу/);
     assert.match(info, /PNG/);
     assert.match(info, /2:1/);
     await shot('05-info');
@@ -187,7 +193,7 @@ describe('interface', () => {
 
   it('exports the operation log to a file', async () => {
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#saveLog').click()]);
-    assert.match(download.suggestedFilename(), /^lumagrid-log-.*\.log$/);
+    assert.match(download.suggestedFilename(), /^журнал-операцій-.*\.log$/);
     const text = await readFile(await download.path(), 'utf8');
     assert.match(text, /\[SUCCESS\] Збережено photo_grid16\.png/);
   });
@@ -198,6 +204,19 @@ describe('interface', () => {
     assert.equal(await page.locator('#dropPlaceholder').isVisible(), true);
     assert.equal(await page.locator('[data-save="bmp"]').isDisabled(), true);
     assert.equal(await page.locator('#infoButton').isDisabled(), true);
+  });
+
+  it('gives every control a clear name', async () => {
+    const unnamed = await page.evaluate(() =>
+      [...document.querySelectorAll('button, input, select')]
+        .filter((control) => {
+          const text = control.tagName === 'BUTTON' ? control.textContent : '';
+          const name = control.getAttribute('aria-label') || control.labels?.[0]?.textContent || text;
+          return !name.trim();
+        })
+        .map((control) => control.id || control.outerHTML.slice(0, 80)),
+    );
+    assert.deepEqual(unnamed, []);
   });
 
   it('fits a phone screen without horizontal page scroll', async () => {
